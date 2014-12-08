@@ -1,0 +1,14 @@
+# Temp files
+*~
+
+# Build
+build/
+
+# IDE files
+*.kdev4
+
+CMakeCache.txt
+CMakeFiles
+Makefile
+cmake_install.cmake
+install_manifest.txt
