@@ -18,7 +18,7 @@ include_directories(
 )
 
 target_link_libraries(${EXECUTABLE_NAME}
-	libhootsim2000
+	hootsim
 	${OPENGL_LIBRARIES}
 	SDL2
 )
