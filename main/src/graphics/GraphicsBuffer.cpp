@@ -2,6 +2,9 @@
 
 #include <cstring>
 
+// TODO Fix this functionality
+#undef USE_MAPBUFFER
+
 GraphicsBuffer::~GraphicsBuffer()
 {
 	if( buffer != 0 )
@@ -26,8 +29,12 @@ void GraphicsBuffer::upload(int size, int offset, void *data)
 	}
 	
 	glBindBuffer(GL_ARRAY_BUFFER, buffer);
+#if USE_MAPBUFFER
 	void* mem = glMapBufferRange(GL_ARRAY_BUFFER, offset, size, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_RANGE_BIT);
 	std::memcpy(mem, data, size);
 	glUnmapBuffer(GL_ARRAY_BUFFER);
+#else
+	glBufferSubData(GL_ARRAY_BUFFER, offset, size, data);
+#endif
 }
 
