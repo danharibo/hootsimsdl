@@ -26,7 +26,7 @@ find_package(OpenGL REQUIRED)
 
 # TODO add package for SDL 2
 
-SET(GL_SRC ${CMAKE_SOURCE_DIR}/opengl/gl_core_3_3.c)
+SET(GL_SRC ${CMAKE_SOURCE_DIR}/opengl/gl_core_3_3.c ${CMAKE_SOURCE_DIR}/opengl/hootgl.cpp)
 SET(GL_INCLUDE ${CMAKE_SOURCE_DIR}/opengl)
 
 add_subdirectory(hootsim2000)

@@ -9,6 +9,11 @@ add_executable(${EXECUTABLE_NAME}
 	
 	src/HootsimApp.cpp
 	src/HootsimSDLApp.cpp
+	
+	src/DrawManager.cpp
+	
+	src/graphics/GraphicsBuffer.cpp
+	src/graphics/ArrayBuffer.cpp
 )
 
 include_directories(
