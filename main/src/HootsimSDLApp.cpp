@@ -1,4 +1,6 @@
 #include "HootsimSDLApp.hpp"
+#include "MessageQueue.h"
+
 #include <iostream>
 
 HootsimSDLApp::HootsimSDLApp()
@@ -20,7 +22,7 @@ void HootsimSDLApp::createWindow(const std::string& title)
 	SDL_Init(SDL_INIT_VIDEO);
 	
 	SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 3 );
-	SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, 3 );
+	SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, 1 );
 	SDL_GL_SetAttribute( SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE );
 	
 	window = SDL_CreateWindow(
@@ -47,6 +49,12 @@ void HootsimSDLApp::handleEvents()
 		switch(event.type)
 		{
 		case SDL_KEYDOWN:
+			getMessageQueue().broadcast("key_down", -1, -1, std::to_string(event.key.keysym.sym));
+			break;
+		case SDL_KEYUP:
+			getMessageQueue().broadcast("key_up", -1, -1, std::to_string(event.key.keysym.sym));
+			break;
+		case SDL_QUIT:
 			quit();
 		break;
 		}

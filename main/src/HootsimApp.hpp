@@ -34,6 +34,7 @@ public:
 	virtual void swapBuffers() = 0;
 	
 	Simulator* getSimulator() { return simulator; }
+	MessageQueue& getMessageQueue() { return mq; }
 	
 private:
 	

@@ -8,8 +8,12 @@
 #include <Entity.h>
 
 #include <chrono>
+#include <string>
 
-const GLchar* sprite_vertex = R"(#version 140
+// this shouldn't be included in the generic application :<
+#include <SDL2/SDL_keycode.h>
+
+const GLchar* sprite_vertex = R"(#version 130
 #extension GL_ARB_explicit_attrib_location : enable
 
 layout(location=0) in vec3 a_position;
@@ -21,7 +25,7 @@ void main(void)
 
 )";
 
-const GLchar* sprite_fragment = R"(#version 140
+const GLchar* sprite_fragment = R"(#version 130
 uniform sampler2D texture0;
 
 out vec4 colour;
@@ -51,10 +55,11 @@ const GLuint sprite_blue[] = { 0x5555FF };
 class SpriteController : public Controller
 {
 public:
-	SpriteController(DrawManager* dm, MessageQueue *mq)
-	: Controller(mq), drawer(dm)
+	SpriteController(DrawManager* dm, Simulator *sm)
+	: Controller(sm), drawer(dm)
 	{
 		this->mq->subscribe("draw", this);
+		this->mq->subscribe("change_sprite", this);
 		
 		vertices.allocate(sizeof(sprite_verticies));
 		vertices.upload(sizeof(sprite_verticies), 0, sprite_verticies);
@@ -66,6 +71,19 @@ public:
 		geometry.setIndicesBuffer(&indices);
 		
 		geometry.update();
+		
+		glGenTextures(2, sprites);
+
+		glBindTexture(GL_TEXTURE_2D, sprites[0]);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1, 1, 0, GL_RGB, GL_UNSIGNED_BYTE, sprite_red);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		
+		glBindTexture(GL_TEXTURE_2D, sprites[1]);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1, 1, 0, GL_RGB, GL_UNSIGNED_BYTE, sprite_blue);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		
 	}
 	
 	virtual void notify(const std::string& id, int to, int from, const std::string& message)
@@ -73,8 +91,14 @@ public:
 		if ( id == "draw" )
 		{
 			Entity* e = entities[to];
-			GLuint sprite = e->get_property("sprite");
-			drawer->enqueue({ &geometry, 0, 6, sprite });
+			int sprite = e->get_property("sprite");
+			drawer->enqueue({ &geometry, 0, 6, sprites[sprite] });
+		}
+		else if ( id == "change_sprite" )
+		{
+			Entity* e = entities[to];
+			int sprite = e->get_property("sprite");
+			e->update_property("sprite", (++sprite) % 2);
 		}
 	}
 	
@@ -85,6 +109,8 @@ private:
 	ArrayBuffer geometry;
 	GraphicsBuffer vertices;
 	GraphicsBuffer indices;
+	
+	GLuint sprites[2];
 };
 
 HootsimApp::HootsimApp()
@@ -101,6 +127,33 @@ HootsimApp::~HootsimApp()
 	}
 }
 
+/**
+ * An example of some way to turn input events into other kinds of messages.
+ * Probably could be done much better.
+ */
+class InputHandler : public Receiver
+{
+public:
+	
+	InputHandler(MessageQueue* mq)
+	{
+		set_messagequeue(mq);
+		mq->subscribe("key_up", this);
+	}
+	
+	virtual void super_notify(const std::string &msg_type, int to, int from, const std::string &message)
+	{
+		if( msg_type == "key_up" )
+		{
+			int keysym = std::atoi(message.c_str());
+			if( keysym == SDLK_SPACE )
+			{
+				mq->broadcast("change_sprite", -1, -1, "");
+			}
+		}
+	}
+};
+
 int HootsimApp::run(int argc, char** argv)
 {
 	createWindow("Hootsim 2000");
@@ -109,40 +162,21 @@ int HootsimApp::run(int argc, char** argv)
 	
 	DrawManager dm;
 	
-	SpriteController sc(&dm, &mq);
+	SpriteController sc(&dm, simulator);
 	simulator->register_controller(&sc);
 	sc.add_requirement("sprite");
+	
+	InputHandler ih(&mq);
 	
 	GLuint program = hglCreateProgram(sprite_vertex, sprite_fragment);
 	
 	glUseProgram(program);
 	glUniform1i(0, 0);
 	
-	GLuint sprites[2];
-	glGenTextures(2, sprites);
-
-	glBindTexture(GL_TEXTURE_2D, sprites[0]);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1, 1, 0, GL_RGB, GL_UNSIGNED_BYTE, sprite_red);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	
-	glBindTexture(GL_TEXTURE_2D, sprites[1]);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1, 1, 0, GL_RGB, GL_UNSIGNED_BYTE, sprite_blue);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	
-	Entity ent(&mq);
+	Entity ent(simulator);
 	simulator->register_entity(&ent);
-	ent.set_id(1);
 	
-	//NOTE: This just copies the GL texture name to a property.
-	// The texture could be moved into the controller (or some other object)
-	// and selected by some other means (e.g. prop("sprite") => 0 would select 
-	// sprite 0 in the controller, which is mapped to sprites[0])
-	// This same model can be applied to models.
-	ent.add_property("sprite", sprites[0]);
-	
-	simulator->notify("add_prop", 0, 0, "");
+	ent.add_property("sprite", 0);
 	
 	auto lastClock = std::chrono::steady_clock::now();
 	float tickAccumulator = 0.f;
