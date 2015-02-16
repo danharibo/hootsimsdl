@@ -12,15 +12,20 @@
 
 // this shouldn't be included in the generic application :<
 #include <SDL2/SDL_keycode.h>
+#include <SDL2/SDL_image.h>
 
 const GLchar* sprite_vertex = R"(#version 130
 #extension GL_ARB_explicit_attrib_location : enable
 
 layout(location=0) in vec3 a_position;
 
+out vec2 uv;
+
 void main(void)
 {
 	gl_Position = vec4(a_position, 1.0);
+	uv = vec2(a_position) + vec2(0.5);
+	uv.y = 1 - uv.y;
 }
 
 )";
@@ -28,11 +33,13 @@ void main(void)
 const GLchar* sprite_fragment = R"(#version 130
 uniform sampler2D texture0;
 
+in vec2 uv;
+
 out vec4 colour;
 
 void main(void)
 {
-	vec4 tex0 = texture(texture0, vec2(0.5, 0.5));
+	vec4 tex0 = texture(texture0, uv);
 	colour = tex0;
 }
 )";
@@ -48,14 +55,13 @@ unsigned int sprite_indicies[] = {
 	2, 1, 3
 };
 
-const GLuint sprite_red[] = { 0xFF5555 };
 const GLuint sprite_blue[] = { 0x5555FF };
 
 /* Temporary Controller for visuals */
 class SpriteController : public Controller
 {
 public:
-	SpriteController(DrawManager* dm, Simulator *sm)
+	SpriteController(DrawManager* dm, Simulator *sm, SDL_Surface* sprite)
 	: Controller(sm), drawer(dm)
 	{
 		this->mq->subscribe("draw", this);
@@ -75,7 +81,7 @@ public:
 		glGenTextures(2, sprites);
 
 		glBindTexture(GL_TEXTURE_2D, sprites[0]);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1, 1, 0, GL_RGB, GL_UNSIGNED_BYTE, sprite_red);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, sprite->w, sprite->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, sprite->pixels);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		
@@ -156,15 +162,35 @@ public:
 
 int HootsimApp::run(int argc, char** argv)
 {
+	// Parse command line arguments
+	char* datadir = getenv("HOOTSIM_DATA");
+	if( datadir == nullptr )
+	{
+		throw std::runtime_error("No data directory specified! (HOOTSIM_DATA)");
+	}
+	
+	resources.indexDirectory(datadir);
+	
+	ResourceIndex::FileInfo info;
+	resources.findFileInfo("smile.png", info);
+	auto path = info.directory + "/" + info.realFileName;
+	SDL_Surface* sprite = IMG_Load(path.c_str());
+	if ( ! sprite )
+	{
+		throw std::runtime_error("Failed to load sprite");
+	}
+	
 	createWindow("Hootsim 2000");
 	
 	simulator = new Simulator(&mq);
 	
 	DrawManager dm;
 	
-	SpriteController sc(&dm, simulator);
+	SpriteController sc(&dm, simulator, sprite);
 	simulator->register_controller(&sc);
 	sc.add_requirement("sprite");
+	
+	SDL_free(sprite);
 	
 	InputHandler ih(&mq);
 	

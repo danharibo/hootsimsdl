@@ -7,6 +7,7 @@
 
 #include <Simulator.h>
 #include <MessageQueue.h>
+#include "resource/ResourceIndex.hpp"
 
 /**
  * Implements Basic logic for the hootsim client
@@ -46,6 +47,8 @@ private:
 	
 	MessageQueue mq;
 	Simulator* simulator;
+	
+	ResourceIndex resources;
 };
 
 #endif

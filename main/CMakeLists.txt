@@ -14,6 +14,8 @@ add_executable(${EXECUTABLE_NAME}
 	
 	src/graphics/GraphicsBuffer.cpp
 	src/graphics/ArrayBuffer.cpp
+	
+	src/resource/ResourceIndex.cpp
 )
 
 include_directories(
@@ -26,5 +28,6 @@ target_link_libraries(${EXECUTABLE_NAME}
 	hootsim
 	${OPENGL_LIBRARIES}
 	SDL2
+	SDL2_image
 )
 
